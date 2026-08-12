@@ -4,3 +4,5 @@ __pycache__/
 vectorstore/
 data/*.pdf
 .env
+.DS_Store
+.Rhistory
