@@ -106,16 +106,64 @@ Question: {question}
 Answer:"""
 
 
-def _is_useful_answer(text: str) -> bool:
+def _is_useful_answer(text: str, question: str, chunks) -> bool:
     normalized = text.strip()
+
     if len(normalized) < 15:
         return False
-    if re.fullmatch(r"(?:\[\d+\]\s*)+", normalized):
+
+    if re.fullmatch(r"(?:[\d+]\s*)+", normalized):
         return False
+
     if normalized.lower() in {"i don't know", "i do not know"}:
         return False
-    return any(char.isalpha() for char in normalized)
 
+    if not any(char.isalpha() for char in normalized):
+        return False
+
+    stop_words = {
+        "what", "which", "when", "where", "how", "why",
+        "is", "are", "the", "a", "an", "of", "to", "in",
+        "for", "on", "with", "and", "or", "do", "does"
+    }
+
+    question_terms = {
+        term
+        for term in re.findall(r"[a-z0-9]+", question.lower())
+        if term not in stop_words
+    }
+
+    answer_terms = set(re.findall(r"[a-z0-9]+", normalized.lower()))
+
+    # Find the sentence in the retrieved context that best matches
+    # the question.
+    best_sentence_terms = set()
+    best_score = -1
+
+    for chunk in chunks:
+        chunk_text = " ".join(chunk.page_content.split())
+
+        for sentence in re.split(r"(?<=[.!?])\s+", chunk_text):
+            sentence_terms = set(
+                re.findall(r"[a-z0-9]+", sentence.lower())
+            )
+
+            meaningful_terms = sentence_terms - stop_words
+            score = len(question_terms & meaningful_terms)
+
+            if score > best_score:
+                best_score = score
+                best_sentence_terms = meaningful_terms
+
+    # The answer must contain at least one meaningful term
+    # from the most relevant source sentence.
+    if best_sentence_terms:
+        meaningful_overlap = answer_terms & best_sentence_terms
+
+        if not meaningful_overlap:
+            return False
+
+    return True
 
 def _extractive_fallback(question: str, chunks) -> str:
     question_terms = {
@@ -171,7 +219,7 @@ def _extractive_fallback(question: str, chunks) -> str:
         priority_phrases.extend(["1200w max", "maximum of 1200w", "1200w"])
 
     if priority_phrases:
-        for index, chunk in enumerate(candidate_chunks, start=1):
+        for index, chunk in enumerate(chunks, start=1):
             chunk_text = " ".join(chunk.page_content.split())
             chunk_lower = chunk_text.lower()
             sentences = re.split(r"(?<=[.!?])\s+", chunk_text)
@@ -287,7 +335,7 @@ def answer_question(question: str, retriever, llm, chunks=None) -> str:
         response = llm.invoke(prompt)
         answer_text = getattr(response, "content", response)
 
-    if not _is_useful_answer(answer_text):
+    if not _is_useful_answer(answer_text, question, chunks):
         return _extractive_fallback(question, chunks)
 
     return answer_text
