@@ -1,0 +1,42 @@
+[
+  {
+    "question": "What is the maximum power draw?",
+    "expected_phrases": ["1200w"],
+    "note": "Checks the power specification."
+  },
+  {
+    "question": "How many cups does the carafe hold?",
+    "expected_phrases": ["12 cups"],
+    "note": "Checks the capacity specification."
+  },
+  {
+    "question": "What Wi-Fi band does the machine use?",
+    "expected_phrases": ["2.4ghz"],
+    "note": "Checks the connectivity spec."
+  },
+  {
+    "question": "How do I fix a red blinking Wi-Fi light?",
+    "expected_phrases": ["hold the wifi button for 5 seconds", "re-pair"],
+    "note": "Checks troubleshooting guidance."
+  },
+  {
+    "question": "How often should I descale the machine?",
+    "expected_phrases": ["60 brew cycles"],
+    "note": "Checks cleaning instructions."
+  },
+  {
+    "question": "What should I do if the machine does not power on?",
+    "expected_phrases": ["plugged into a working outlet", "reservoir lid is fully closed"],
+    "note": "Checks a basic troubleshooting flow."
+  },
+  {
+    "question": "Is the carafe dishwasher safe?",
+    "expected_phrases": ["top-rack dishwasher safe"],
+    "note": "Checks care instructions."
+  },
+  {
+    "question": "What is the warranty period?",
+    "expected_phrases": ["2 year limited warranty"],
+    "note": "Checks the warranty section."
+  }
+]

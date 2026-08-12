@@ -85,10 +85,17 @@ For meaningfully better answers:
 
 ## Step 7 — Evaluate it properly (worth doing before you put this on your resume)
 
-Write down 15-20 real questions you'd expect the system to answer correctly,
-run them through, and grade each manually as correct/incorrect. Optionally
-install `ragas` (`pip install ragas`) for automated faithfulness/relevancy scoring.
-Having even rough numbers ("12/15 correct on held-out questions" or "faithfulness
+Use the repeatable script in [scripts/evaluate.py](scripts/evaluate.py) to score the
+project against a small held-out set in [sample_data/held_out_questions.json](sample_data/held_out_questions.json):
+
+```bash
+PYTHONPATH=src .venv/bin/python scripts/evaluate.py --output reports/eval_report.md
+```
+
+That writes a markdown summary to [reports/eval_report.md](reports/eval_report.md)
+and prints a simple pass/fail score. If you want a deeper benchmark, swap in
+`ragas` or expand the held-out set to 15-20 real questions from your own docs.
+Having even rough numbers ("6/8 correct on held-out questions" or "faithfulness
 score 0.89") is far more convincing on a resume than an unquantified claim.
 
 ## Step 8 — Push and deploy
