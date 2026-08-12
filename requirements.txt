@@ -1,0 +1,27 @@
+# Core RAG stack
+langchain==0.3.7
+langchain-community==0.3.7
+langchain-huggingface==0.1.2
+
+# Vector store
+faiss-cpu==1.9.0
+
+# PDF loading
+pypdf==5.1.0
+
+# Local embeddings (free, no API key needed)
+sentence-transformers==3.3.1
+
+# Local generation option (free, no API key needed)
+transformers==4.46.3
+torch==2.5.1
+
+# Optional: swap in a hosted LLM instead of the local one for better answer quality
+langchain-openai==0.2.9   # needs OPENAI_API_KEY
+langchain-anthropic==0.3.0  # needs ANTHROPIC_API_KEY
+
+# Web UI
+streamlit==1.40.1
+
+# Utilities
+python-dotenv==1.0.1
