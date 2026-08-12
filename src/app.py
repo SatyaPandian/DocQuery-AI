@@ -16,18 +16,29 @@ from pathlib import Path
 import streamlit as st
 
 sys.path.append(str(Path(__file__).resolve().parent))
-from ingest import chunk_documents, EMBEDDING_MODEL  # noqa: E402
+from ingest import chunk_documents  # noqa: E402
 from langchain_community.document_loaders import PyPDFLoader
-from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
-from query import build_prompt, get_local_llm  # noqa: E402
+from query import (  # noqa: E402
+    build_prompt,
+    get_embeddings,
+    get_local_llm,
+    has_saved_index,
+    load_vectorstore,
+    save_vectorstore,
+)
+
+INDEX_DIR = Path(__file__).resolve().parent.parent / "vectorstore"
 
 st.set_page_config(page_title="DocQuery AI", page_icon="📄", layout="centered")
 st.title("📄 DocQuery AI")
 st.caption("Ask questions over your PDF manuals — answers are grounded with page citations.")
 
 if "vectorstore" not in st.session_state:
-    st.session_state.vectorstore = None
+    try:
+        st.session_state.vectorstore = load_vectorstore()
+    except SystemExit:
+        st.session_state.vectorstore = None
 if "history" not in st.session_state:
     st.session_state.history = []
 
@@ -38,6 +49,11 @@ with st.sidebar:
     )
     build_clicked = st.button("Build index", type="primary", disabled=not uploaded_files)
 
+    if has_saved_index():
+        st.caption(f"Existing index found at {INDEX_DIR.name}/")
+    else:
+        st.caption("No saved index yet. Build one from uploaded PDFs.")
+
     if build_clicked and uploaded_files:
         with st.spinner("Loading, chunking, and embedding your PDFs..."):
             documents = []
@@ -45,15 +61,18 @@ with st.sidebar:
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
                     tmp.write(uploaded.getvalue())
                     tmp_path = tmp.name
-                loader = PyPDFLoader(tmp_path)
-                pages = loader.load()
-                for p in pages:
-                    p.metadata["source"] = uploaded.name
-                documents.extend(pages)
+                try:
+                    loader = PyPDFLoader(tmp_path)
+                    pages = loader.load()
+                    for p in pages:
+                        p.metadata["source"] = uploaded.name
+                    documents.extend(pages)
+                finally:
+                    Path(tmp_path).unlink(missing_ok=True)
 
             chunks = chunk_documents(documents)
-            embeddings = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL)
-            st.session_state.vectorstore = FAISS.from_documents(chunks, embeddings)
+            st.session_state.vectorstore = FAISS.from_documents(chunks, get_embeddings())
+            save_vectorstore(st.session_state.vectorstore)
         st.success(f"Indexed {len(chunks)} chunks from {len(uploaded_files)} file(s).")
 
 st.header("2. Ask a question")

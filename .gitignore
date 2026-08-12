@@ -6,3 +6,4 @@ data/*.pdf
 .env
 .DS_Store
 .Rhistory
+.gh-config/

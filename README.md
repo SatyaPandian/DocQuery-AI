@@ -68,7 +68,9 @@ streamlit run src/app.py
 ```
 
 Opens a browser UI where you can upload PDFs, build the index, and ask questions
-interactively. This is the version worth deploying and linking on your resume.
+interactively. The app now saves the generated FAISS index to `vectorstore/` and
+reloads it on startup, so you do not need to rebuild from scratch every time you
+restart Streamlit. This is the version worth deploying and linking on your resume.
 
 ## Step 6 — (Optional) Swap in a hosted LLM for better answers
 

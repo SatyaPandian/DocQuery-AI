@@ -13,7 +13,7 @@ whole pipeline works with zero API keys. For noticeably better answers,
 set USE_HOSTED_LLM = True below and export an API key.
 """
 
-import os
+from functools import lru_cache
 from pathlib import Path
 
 from langchain_huggingface import HuggingFaceEmbeddings
@@ -31,14 +31,30 @@ HOSTED_PROVIDER = "openai"  # "openai" or "anthropic"
 # -----------------------------------------------------------------------
 
 
-def load_retriever():
-    if not INDEX_DIR.exists():
+@lru_cache(maxsize=1)
+def get_embeddings():
+    return HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL)
+
+
+def has_saved_index() -> bool:
+    return (INDEX_DIR / "index.faiss").exists() and (INDEX_DIR / "index.pkl").exists()
+
+
+def load_vectorstore():
+    if not has_saved_index():
         raise SystemExit("No vector index found. Run `python src/ingest.py` first.")
-    embeddings = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL)
-    vectorstore = FAISS.load_local(
-        str(INDEX_DIR), embeddings, allow_dangerous_deserialization=True
+    return FAISS.load_local(
+        str(INDEX_DIR), get_embeddings(), allow_dangerous_deserialization=True
     )
-    return vectorstore.as_retriever(search_kwargs={"k": TOP_K})
+
+
+def save_vectorstore(vectorstore):
+    INDEX_DIR.mkdir(exist_ok=True)
+    vectorstore.save_local(str(INDEX_DIR))
+
+
+def load_retriever():
+    return load_vectorstore().as_retriever(search_kwargs={"k": TOP_K})
 
 
 def build_prompt(question: str, chunks) -> str:
@@ -61,6 +77,7 @@ Question: {question}
 Answer:"""
 
 
+@lru_cache(maxsize=1)
 def get_local_llm():
     """Free, offline generation using a small instruction-tuned model."""
     from transformers import pipeline
@@ -100,9 +117,10 @@ def answer_question(question: str, retriever, llm) -> str:
 
     if USE_HOSTED_LLM:
         response = llm.invoke(prompt)
-        return response.content
+        return getattr(response, "content", str(response))
     else:
-        return llm.invoke(prompt)
+        response = llm.invoke(prompt)
+        return getattr(response, "content", response)
 
 
 def main():
