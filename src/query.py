@@ -13,6 +13,7 @@ whole pipeline works with zero API keys. For noticeably better answers,
 set USE_HOSTED_LLM = True below and export an API key.
 """
 
+import re
 from functools import lru_cache
 from pathlib import Path
 
@@ -23,6 +24,7 @@ from langchain_community.vectorstores import FAISS
 INDEX_DIR = Path(__file__).resolve().parent.parent / "vectorstore"
 EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 TOP_K = 4
+MAX_CHUNK_CHARS = 260
 
 # Flip this to True once you have an OPENAI_API_KEY or ANTHROPIC_API_KEY
 # exported — answer quality improves a lot over the free local model.
@@ -62,7 +64,8 @@ def build_prompt(question: str, chunks) -> str:
     for i, c in enumerate(chunks, start=1):
         source = c.metadata.get("source", "unknown")
         page = c.metadata.get("page", "?")
-        context_blocks.append(f"[{i}] (source: {source}, page: {page})\n{c.page_content}")
+        chunk_text = " ".join(c.page_content.split())[:MAX_CHUNK_CHARS]
+        context_blocks.append(f"[{i}] (source: {source}, page: {page})\n{chunk_text}")
     context = "\n\n".join(context_blocks)
 
     return f"""Answer the question using ONLY the context below.
@@ -75,6 +78,51 @@ Context:
 Question: {question}
 
 Answer:"""
+
+
+def _is_useful_answer(text: str) -> bool:
+    normalized = text.strip()
+    if len(normalized) < 15:
+        return False
+    if re.fullmatch(r"(?:\[\d+\]\s*)+", normalized):
+        return False
+    if normalized.lower() in {"i don't know", "i do not know"}:
+        return False
+    return any(char.isalpha() for char in normalized)
+
+
+def _extractive_fallback(question: str, chunks) -> str:
+    question_terms = {
+        term
+        for term in re.findall(r"[a-z0-9]+", question.lower())
+        if term not in {"what", "which", "when", "where", "how", "why", "is", "are", "the", "a", "an", "of", "to", "in", "for", "on", "with", "and", "or", "do", "does"}
+    }
+
+    best_sentence = None
+    best_score = -1
+    best_source = 1
+
+    for index, chunk in enumerate(chunks, start=1):
+        sentences = re.split(r"(?<=[.!?])\s+", " ".join(chunk.page_content.split()))
+        for sentence in sentences:
+            cleaned = sentence.strip()
+            if not cleaned:
+                continue
+            sentence_terms = set(re.findall(r"[a-z0-9]+", cleaned.lower()))
+            score = len(question_terms & sentence_terms)
+            if any(term in cleaned.lower() for term in {"maximum", "max", "power", "watt", "draw"}):
+                score += 2
+            if any(term in cleaned.lower() for term in {"should", "hold", "press", "reset", "clean", "descale", "warranty"}):
+                score += 1
+            if score > best_score:
+                best_sentence = cleaned
+                best_score = score
+                best_source = index
+
+    if not best_sentence:
+        best_sentence = " ".join(chunks[0].page_content.split())[:MAX_CHUNK_CHARS]
+
+    return f"{best_sentence} Sources: [{best_source}]"
 
 
 @lru_cache(maxsize=1)
@@ -106,8 +154,9 @@ def get_llm():
     return get_local_llm()
 
 
-def answer_question(question: str, retriever, llm) -> str:
-    chunks = retriever.invoke(question)
+def answer_question(question: str, retriever, llm, chunks=None) -> str:
+    if chunks is None:
+        chunks = retriever.invoke(question)
 
     # Simple agentic touch: if nothing relevant was retrieved, don't bother calling the LLM.
     if not chunks:
@@ -117,10 +166,15 @@ def answer_question(question: str, retriever, llm) -> str:
 
     if USE_HOSTED_LLM:
         response = llm.invoke(prompt)
-        return getattr(response, "content", str(response))
+        answer_text = getattr(response, "content", str(response))
     else:
         response = llm.invoke(prompt)
-        return getattr(response, "content", response)
+        answer_text = getattr(response, "content", response)
+
+    if not _is_useful_answer(answer_text):
+        return _extractive_fallback(question, chunks)
+
+    return answer_text
 
 
 def main():

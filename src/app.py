@@ -20,12 +20,12 @@ from ingest import chunk_documents  # noqa: E402
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.vectorstores import FAISS
 from query import (  # noqa: E402
-    build_prompt,
     get_embeddings,
     get_local_llm,
     has_saved_index,
     load_vectorstore,
     save_vectorstore,
+    answer_question,
 )
 
 INDEX_DIR = Path(__file__).resolve().parent.parent / "vectorstore"
@@ -85,9 +85,8 @@ else:
         with st.spinner("Retrieving relevant chunks and generating an answer..."):
             retriever = st.session_state.vectorstore.as_retriever(search_kwargs={"k": 4})
             chunks = retriever.invoke(question)
-            prompt = build_prompt(question, chunks)
             llm = get_local_llm()
-            answer = llm.invoke(prompt)
+            answer = answer_question(question, retriever, llm, chunks=chunks)
             st.session_state.history.append((question, answer, chunks))
 
     for q, a, chunks in reversed(st.session_state.history):
