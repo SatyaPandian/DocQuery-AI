@@ -2,13 +2,13 @@
 
 **Document question answering with retrieval-augmented generation (RAG).**
 
-DocQuery AI lets users upload PDF documents and ask questions about their contents using natural language. Relevant passages are retrieved from the indexed documents and supplied to an LLM to generate answers grounded in the source material.
+DocQuery AI is a local RAG application for asking natural-language questions about PDF documents. Relevant passages are retrieved from an indexed document collection and provided to a language model to generate answers grounded in the source material.
 
-The application preserves document and page metadata throughout the pipeline so retrieved context can be traced back to the original PDF.
+Document and page metadata are preserved throughout the pipeline so retrieved context can be traced back to the original PDF.
 
 ## Overview
 
-DocQuery AI implements a local RAG pipeline for PDF documents:
+DocQuery AI implements the following local RAG pipeline:
 
 ```text
 PDF Documents
@@ -29,16 +29,19 @@ FAISS Vector Index
 Similarity Retrieval
      │
      ▼
-Context + Question
+Retrieved Context + Question
      │
      ▼
 Language Model
      │
      ▼
+Grounded Answer Validation
+     │
+     ▼
 Grounded Answer + Sources
-```
+````
 
-The project is designed to run locally without requiring an external API for embeddings or generation.
+The default configuration runs locally without requiring an external API for embeddings or generation.
 
 ## Features
 
@@ -52,8 +55,9 @@ The project is designed to run locally without requiring an external API for emb
 * Optional OpenAI or Anthropic integration
 * Streamlit interface for interactive document Q&A
 * Persistent FAISS indexes
-* Held-out question sets for basic answer validation
-* Extractive fallback when generated responses are unusable
+* Held-out question sets for reproducible answer validation
+* Generated-answer validation against retrieved evidence
+* Extractive fallback when a generated response is unusable or insufficiently grounded
 
 ## Tech Stack
 
@@ -79,14 +83,14 @@ DocQuery-AI/
 │   └── evaluate.py        # Held-out evaluation script
 ├── src/
 │   ├── ingest.py          # PDF loading, chunking and indexing
-│   ├── query.py           # Retrieval and answer generation
+│   ├── query.py           # Retrieval, generation and answer validation
 │   └── app.py             # Streamlit application
 ├── .gitignore
 ├── requirements.txt
 └── README.md
 ```
 
-Generated vector indexes and user documents are excluded from version control.
+Generated vector indexes and local user documents are excluded from version control.
 
 ## Getting Started
 
@@ -104,7 +108,15 @@ python3 -m venv .venv
 source .venv/bin/activate
 ```
 
+Verify that the virtual environment is active:
+
+```bash
+which python
+which pip
 ```
+
+Both should point to `.venv/bin/`.
+
 ### 3. Install dependencies
 
 ```bash
@@ -173,39 +185,71 @@ The system uses `sentence-transformers/all-MiniLM-L6-v2` to convert document chu
 
 At query time, the question is embedded and compared against the FAISS index. The highest-ranked chunks are passed to the language model as context.
 
-The generation prompt explicitly instructs the model to:
+The generation prompt instructs the model to:
 
 * use only the retrieved context;
 * avoid unsupported claims;
 * indicate when the answer cannot be found in the indexed documents;
-* identify the source chunks used to answer the question.
+* identify the numbered source chunks used to answer the question.
 
-When the local model produces an unusable response, the system falls back to an extractive answer based on the retrieved passages.
+### Grounded Answer Validation
+
+Generated responses are checked before being returned to the user.
+
+The validation step verifies that the generated answer contains terms supported by the retrieved evidence. This helps detect cases where the local language model produces an unrelated or weakly grounded response even though the retriever found the correct information.
+
+When a generated response fails the usefulness or grounding checks, the system uses an extractive fallback. The fallback selects relevant sentences directly from the retrieved document chunks using question-specific relevance signals and priority phrases.
+
+This provides a deterministic path to the source text when generation is unreliable.
 
 ## Evaluation
 
-A small held-out question set is included under:
+A held-out question set is included under:
 
 ```text
 sample_data/
 ```
 
-Run the evaluation with:
+The evaluation script checks whether generated answers contain the expected answer phrases.
+
+Run the current evaluation with:
 
 ```bash
 PYTHONPATH=src python scripts/evaluate.py \
-  --output reports/eval_report.md
+  --output reports/eval_report_v3.md
 ```
 
-An alternate question set is also available:
+The current evaluation set contains 8 questions covering:
 
-```bash
-PYTHONPATH=src python scripts/evaluate.py \
-  --questions sample_data/held_out_questions_v2.json \
-  --output reports/eval_report_v2.md
+* maximum power draw
+* carafe capacity
+* Wi-Fi band
+* Wi-Fi troubleshooting
+* descaling frequency
+* power-on troubleshooting
+* dishwasher safety
+* warranty period
+
+### Evaluation Result
+
+The current evaluation produced:
+
+| Metric                    | Result |
+| ------------------------- | -----: |
+| Questions                 |      8 |
+| Passed                    |      8 |
+| Failed                    |      0 |
+| Expected-phrase pass rate |   100% |
+
+The detailed result is stored in:
+
+```text
+reports/eval_report_v3.md
 ```
 
-The current evaluation uses expected-phrase coverage to provide a lightweight, reproducible validation of the generated answers.
+The evaluation is intended as a lightweight, reproducible validation of answer grounding against a fixed held-out question set. The 100% result applies specifically to this evaluation set and should not be interpreted as a general accuracy guarantee.
+
+Previous evaluation reports are retained for development history.
 
 ## Optional Hosted LLMs
 
@@ -241,9 +285,13 @@ The FAISS index is stored on disk so the application does not need to re-embed u
 
 Document filename and page metadata are retained during ingestion, allowing retrieved passages to be traced back to their original location.
 
-### Fallback generation
+### Grounded generation
 
-If the local model fails to produce a useful response, the application can fall back to extracting relevant sentences directly from retrieved document chunks.
+The language model receives only the retrieved document context and is instructed not to introduce unsupported information.
+
+### Answer validation and fallback
+
+Generated answers are checked against the retrieved evidence. If the generated response is unusable or insufficiently grounded, the system falls back to an extractive answer selected directly from the retrieved passages.
 
 ## Future Improvements
 
