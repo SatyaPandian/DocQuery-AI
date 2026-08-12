@@ -86,17 +86,20 @@ For meaningfully better answers:
 ## Step 7 — Evaluate it properly (worth doing before you put this on your resume)
 
 Use the repeatable script in [scripts/evaluate.py](scripts/evaluate.py) to score the
-project against a small held-out set in [sample_data/held_out_questions.json](sample_data/held_out_questions.json):
+project against the held-out sets in [sample_data/held_out_questions.json](sample_data/held_out_questions.json)
+and [sample_data/held_out_questions_v2.json](sample_data/held_out_questions_v2.json):
 
 ```bash
 PYTHONPATH=src .venv/bin/python scripts/evaluate.py --output reports/eval_report.md
+PYTHONPATH=src .venv/bin/python scripts/evaluate.py --questions sample_data/held_out_questions_v2.json --output reports/eval_report_v2.md
 ```
 
-That writes a markdown summary to [reports/eval_report.md](reports/eval_report.md)
-and prints a simple pass/fail score. If you want a deeper benchmark, swap in
-`ragas` or expand the held-out set to 15-20 real questions from your own docs.
-Having even rough numbers ("6/8 correct on held-out questions" or "faithfulness
-score 0.89") is far more convincing on a resume than an unquantified claim.
+That writes markdown summaries to [reports/eval_report.md](reports/eval_report.md)
+and [reports/eval_report_v2.md](reports/eval_report_v2.md) and prints a simple
+pass/fail score. If you want a deeper benchmark, swap in `ragas` or expand the
+held-out set to 15-20 real questions from your own docs. Having even rough numbers
+("7/8 correct on held-out questions" or "faithfulness score 0.89") is far more
+convincing on a resume than an unquantified claim.
 
 ## Step 8 — Push and deploy
 

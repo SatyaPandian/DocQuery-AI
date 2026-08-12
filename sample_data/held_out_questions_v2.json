@@ -1,0 +1,42 @@
+[
+  {
+    "question": "What is the machine's power rating?",
+    "expected_phrases": ["1200w"],
+    "note": "Alternative phrasing for the power specification."
+  },
+  {
+    "question": "Which Wi-Fi standard is supported by the machine?",
+    "expected_phrases": ["802.11 b/g/n", "2.4ghz"],
+    "note": "Checks the wireless spec with broader wording."
+  },
+  {
+    "question": "How do I fix a red blinking Wi-Fi light?",
+    "expected_phrases": ["hold the wifi button for 5 seconds", "re-pair"],
+    "note": "Checks troubleshooting in a slightly different form."
+  },
+  {
+    "question": "How often should I descale the machine?",
+    "expected_phrases": ["60 brew cycles"],
+    "note": "Checks maintenance guidance."
+  },
+  {
+    "question": "What is the warranty period?",
+    "expected_phrases": ["2 year limited warranty"],
+    "note": "Checks the warranty section using a different phrasing."
+  },
+  {
+    "question": "What should I check if the machine does not power on?",
+    "expected_phrases": ["working outlet", "reservoir lid is fully closed"],
+    "note": "Checks a second troubleshooting prompt."
+  },
+  {
+    "question": "Is the carafe top-rack dishwasher safe?",
+    "expected_phrases": ["top-rack dishwasher safe"],
+    "note": "Checks dishwasher-safe language with alternate wording."
+  },
+  {
+    "question": "What are the dimensions of the machine?",
+    "expected_phrases": ["9.5 in w", "14 in d", "13 in h"],
+    "note": "Checks the technical specification table."
+  }
+]

@@ -5,7 +5,7 @@
     "note": "Checks the power specification."
   },
   {
-    "question": "How many cups does the carafe hold?",
+    "question": "What is the carafe capacity?",
     "expected_phrases": ["12 cups"],
     "note": "Checks the capacity specification."
   },
@@ -30,7 +30,7 @@
     "note": "Checks a basic troubleshooting flow."
   },
   {
-    "question": "Is the carafe dishwasher safe?",
+    "question": "Is the carafe top-rack dishwasher safe?",
     "expected_phrases": ["top-rack dishwasher safe"],
     "note": "Checks care instructions."
   },
