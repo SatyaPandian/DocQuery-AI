@@ -305,7 +305,3 @@ Potential extensions include:
 * Better retrieval and generation evaluation using RAG-specific metrics
 * Support for additional document formats
 * Containerized deployment
-
-## License
-
-This project is available under the MIT License.
